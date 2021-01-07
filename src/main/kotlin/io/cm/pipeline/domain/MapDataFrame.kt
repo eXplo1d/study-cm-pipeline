@@ -4,16 +4,21 @@ import java.lang.IllegalArgumentException
 
 class MapDataFrame(private val data: Map<String, List<Any?>>, private val schema: Schema) : DataFrame {
 
-    private val framedData: Map<String, DataFrame> = schema
-        .columns
-        .map { column ->
-            val columnSchema = Schema(setOf(column))
-            val columnData = mapOf(column.name to (data[column.name] ?: listOf()))
-            column.name to MapDataFrame(columnData, columnSchema)
-        }.toMap()
+    private val framedData: Map<String, DataFrame> =
+        if (schema.columns.size > 1) {
+            schema
+                .columns
+                .map { column ->
+                    val columnSchema = Schema(setOf(column))
+                    val columnData = mapOf(column.name to (data[column.name] ?: listOf()))
+                    column.name to MapDataFrame(columnData, columnSchema)
+                }.toMap()
+        } else {
+            mapOf(schema.columnsNames.first() to this)
+        }
 
     private val size = data.values.map { list ->
-        list.size.toLong()
+        list.size.toInt()
     }.firstOrNull() ?: 0
 
     override fun getColumn(name: String): DataFrame =
@@ -59,18 +64,18 @@ class MapDataFrame(private val data: Map<String, List<Any?>>, private val schema
         )
     }
 
-    override fun count(): Long = size
+    override fun count(): Int = size
 
     override fun getSchema(): Schema = schema
 
     override fun getRows(): List<Map<String, Any?>> {
         val buffer = mutableListOf<Map<String, Any>>()
         val keys = data.keys
-        for (i in 0..size) {
+        for (i in 0 until size) {
             buffer.add(
                 keys
                     .map { key ->
-                        val value = data[key] ?: 0
+                        val value = data[key]?.let { it[i] } ?: 0
                         key to value
                     }.toMap()
             )

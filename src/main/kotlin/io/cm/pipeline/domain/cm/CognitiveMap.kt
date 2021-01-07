@@ -5,93 +5,62 @@ import io.cm.pipeline.domain.DataFrame
 import io.cm.pipeline.domain.MapDataFrame
 import io.cm.pipeline.domain.Model
 import io.cm.pipeline.domain.Schema
+import java.util.concurrent.atomic.AtomicLong
 
-class CognitiveMap<T>(
-    vertices: Set<Vertex>,
-    edges: Set<Edge<T>>,
-    private val accumulator: (T, T) -> T
-) : Model {
+class CognitiveMap(private val vertices: Set<StatefulVertex>) : Model {
 
-    val roots: Map<String, Vertex> = (
-        vertices - edges
-            .map { edge ->
-                edge.to()
-            }
-        ).map { edge ->
-            edge.name to edge
-        }.toMap()
+    private val currentIteration = AtomicLong()
+    private val name2Vertex = vertices.associateBy { it.name }
 
-    val fromToEdge: Map<Vertex, List<Edge<T>>> = edges.groupBy { edge -> edge.from() }
-
-    override fun apply(dataFrame: DataFrame): DataFrame {
-        if (!roots.keys.containsAll(dataFrame.getSchema().columnsNames)) {
-            throw IllegalArgumentException("Not enough columns for predict")
-        }
-        val rows = dataFrame
+    override fun invoke(dataFrame: DataFrame): DataFrame {
+        val iterationBuffer = mutableSetOf<Long>()
+        dataFrame
             .getRows()
-            .map { map ->
-                map.map { kv ->
-                    val value = kv.value as T
-                    roots[kv.key]!! to value
-                }.toMap()
-            }
-
-        val forecast = rows.map {
-            predict(it)
-        }
-
-        val data = forecast
-            .flatMap { vertex2value ->
-                vertex2value.map { (vertex, value) ->
-                    vertex.name to value
+            .forEach { row ->
+                val iter1 = currentIteration.incrementAndGet()
+                row.forEach { entry ->
+                    name2Vertex[entry.key]!!.setValue(iter1, entry.value as Number)
                 }
-            }.groupBy({ kv -> kv.first }, { kv -> kv.second })
+                val iter2 = currentIteration.incrementAndGet()
+                iterationBuffer.add(iter2)
+                vertices.forEach { vertex ->
+                    vertex.calculate(iter2)
+                }
+            }
+        val data = iterationBuffer.flatMap { iteration ->
+            vertices.map { vertex ->
+                vertex.name to vertex.getState(iteration).value
+            }
+        }.groupBy({ it.first }, { it.second })
 
         val schema = Schema(
             data
                 .keys
-                .map { column ->
-                    Column(column)
+                .map { name ->
+                    Column(name)
                 }.toSet()
         )
 
-        return MapDataFrame(
-            data = data,
-            schema = schema
+        return MapDataFrame(data, schema)
+    }
+
+    override fun predict(): DataFrame {
+        val iteration = currentIteration.incrementAndGet()
+        vertices.forEach { vertex ->
+            vertex.calculate(iteration)
+        }
+        val data = vertices.map { vertex ->
+            vertex.name to vertex.getState(iteration)
+        }.groupBy({ it.first }, { it.second })
+
+        val schema = Schema(
+            data
+                .keys
+                .map { name ->
+                    Column(name)
+                }.toSet()
         )
-    }
 
-    private fun predict(data: Map<Vertex, T>): Map<Vertex, T> {
-        var valuesBuffer = data
-        for (root in roots.values) {
-            valuesBuffer = goDeep(root, valuesBuffer, mapOf())
-        }
-        return valuesBuffer
-    }
-
-    private fun goDeep(from: Vertex, values: Map<Vertex, T>, incomeCounter: Map<Vertex, Int>): Map<Vertex, T> {
-        val counter = incomeCounter
-            .toMutableMap().let {
-                it.merge(from, 1) { sum, new -> sum + new }
-                it
-            }.toMap()
-
-        if (counter[from] ?: 0 > 1) {
-            return values
-        }
-        val buffer = values.toMutableMap()
-        val edges = fromToEdge[from] ?: listOf()
-        for (edge in edges) {
-            buffer.merge(
-                edge.to(),
-                edge.invoke(buffer[from]!!),
-                accumulator
-            )
-        }
-        var valuesBuffer = buffer.toMap()
-        for (edge in edges) {
-            valuesBuffer = goDeep(edge.to(), valuesBuffer, counter)
-        }
-        return valuesBuffer
+        return MapDataFrame(data, schema)
     }
 }

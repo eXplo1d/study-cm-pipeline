@@ -6,6 +6,6 @@ interface DataFrame {
     fun union(another: DataFrame): DataFrame
     fun join(right: DataFrame): DataFrame
     fun getSchema(): Schema
-    fun count(): Long
+    fun count(): Int
     fun getRows(): List<Map<String, Any?>>
 }

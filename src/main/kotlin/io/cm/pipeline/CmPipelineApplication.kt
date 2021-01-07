@@ -9,9 +9,11 @@ class CmPipelineApplication
 fun main() {
 
     print(
-        SmartDataGenerator(columns = setOf("clmn1","clmn2","clmn3","clmn4","clmn5"),
+        SmartDataGenerator(
+            columns = setOf("clmn1", "clmn2", "clmn3", "clmn4", "clmn5"),
             rows = 100,
-            goalColumnName = "label")
+            goalColumnName = "label"
+        )
             .andThen(StubFilter())
             .andThen(StubTransformer())
             .andThen(StubFilter())

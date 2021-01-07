@@ -1,8 +1,7 @@
 package io.cm.pipeline.domain.cm
 
-interface Edge<T> : (T) -> T {
-    fun from(): Vertex
-    fun to(): Vertex
-    fun move(input: T): T
-    override fun invoke(input: T): T = move(input)
+interface Edge<T> {
+    fun from(): StatefulVertex
+    fun to(): StatefulVertex
+    fun move(iteration: Long, input: T, iterationUid: String)
 }
