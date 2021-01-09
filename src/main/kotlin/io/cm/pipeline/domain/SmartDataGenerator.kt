@@ -1,10 +1,6 @@
 package io.cm.pipeline.domain
 
-import java.util.*
-import kotlin.math.ln
-import kotlin.math.pow
-import kotlin.math.sin
-import kotlin.math.cos
+import kotlin.math.*
 import kotlin.random.Random
 
 class SmartDataGenerator(
@@ -22,10 +18,14 @@ class SmartDataGenerator(
             .toInt()
             .toDouble()
   }
+  private fun goalFunctionsAmount(quantity: Int): Int {
+    return sqrt(quantity.toDouble()).toInt()
+  }
   private val setOfFun = setOf(
           { x: Double -> x },
           { x: Double -> ln(x) },
           { x: Double -> ln(x).pow(ln(x)) },
+          { x: Double -> sqrt(x) },
           { x: Double -> x.pow(2.0) },
           { x: Double -> x.pow(3.0) },
           { x: Double -> sin(x) },
@@ -40,13 +40,14 @@ class SmartDataGenerator(
     val columnBuffer = mutableMapOf<String, List<Any?>>()
     for (col in 1..transitiveStartIndex) {
 //      random seed = x+ln(x)
-      val randomSequence = Random(seed = (col + ln(col.toDouble())).toInt())
+      val randomSequence = Random(seed = (col))
       val rowBuffer = mutableListOf<Any?>()
       for (row in 1..rows) {
         rowBuffer.add(randomSequence.nextLong())
       }
       columnBuffer[columns.elementAt(col)] = rowBuffer.toList()
     }
+
     for (col in (transitiveStartIndex+1)..(columns.size)) {
       val rowBuffer = mutableListOf<Any?>()
 //      get random column index
@@ -61,8 +62,35 @@ class SmartDataGenerator(
           )
         )
       }
-      columnBuffer[UUID.randomUUID().toString()] = rowBuffer.toList()
+      columnBuffer[columns.elementAt(col)] = rowBuffer.toList()
     }
+
+//    goal column set to zero
+    val rowBufferZero = mutableListOf<Any?>()
+    for (row in 1..rows) {
+      rowBufferZero.add(0.0)
+    }
+    columnBuffer[goalColumnName] = rowBufferZero.toList()
+
+//    map of column index and function for this column
+    val functionBuffer = mutableMapOf<Int, Int>()
+    for (i in 1 until (goalFunctionsAmount(columns.size))) {
+      functionBuffer[Random.nextInt(1, columns.size)] = Random.nextInt(1, setOfFun.size)
+    }
+
+//    goal column calculation
+    val rowBuffer = mutableListOf<Any?>()
+    for (row in 1..rows) {
+      var currentValue: Double = 0.0
+      for (k in functionBuffer) {
+        currentValue += deviation(
+                setOfFun.elementAt(functionBuffer[k]!!)
+                        .invoke(columnBuffer[k]!![row] as Double)
+        )
+      }
+      rowBuffer.add(currentValue)
+    }
+    columnBuffer[goalColumnName] = rowBuffer.toList()
 
     val schema = Schema(
             columnBuffer
