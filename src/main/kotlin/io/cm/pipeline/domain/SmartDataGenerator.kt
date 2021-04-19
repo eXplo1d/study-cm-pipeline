@@ -46,7 +46,7 @@ class SmartDataGenerator(
             val randomSequence = Random(seed = (col))
             val rowBuffer = mutableListOf<Any?>()
             for (row in 1..rows) {
-                rowBuffer.add(randomSequence.nextLong(1000))
+                rowBuffer.add(randomSequence.nextDouble(1000.0))
             }
             columnBuffer[columns.elementAt(col)] = rowBuffer.toList()
         }
@@ -88,7 +88,7 @@ class SmartDataGenerator(
             for (k in functionBuffer) {
                 currentValue += deviation(
                     setOfFun.elementAt(k.value)
-                        .invoke((columnBuffer[columns.elementAt(k.key)]!![row] as Long).toDouble())
+                        .invoke((columnBuffer[columns.elementAt(k.key)]!![row] as Double))
                 )
             }
             rowBuffer.add(currentValue)

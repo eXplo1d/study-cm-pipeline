@@ -10,9 +10,9 @@ class CognitiveMapTest {
 
     @Test
     fun `test full connected graph with three concepts`() {
-        val vertexX1 = StatefulVertex("x1", { x -> x.toDouble() * 2 })
-        val vertexX2 = StatefulVertex("x2", { x -> x.toDouble() * 3 })
-        val vertexY = StatefulVertex("y", { x -> x.toDouble() })
+        val vertexX1 = StatefulVertex("x1", LinearFunctionActivation(2.0))
+        val vertexX2 = StatefulVertex("x2", LinearFunctionActivation(3.0))
+        val vertexY = StatefulVertex("y", LinearFunctionActivation(1.0))
         val cognitiveMap = CognitiveMapBuilder()
             .withVertex(vertexX1)
             .withVertex(vertexX2)
@@ -21,8 +21,8 @@ class CognitiveMapTest {
             .build()
         val df = MapDataFrame(
             data = mapOf(
-                "x1" to listOf(1),
-                "x2" to listOf(2)
+                "x1" to listOf(1.0),
+                "x2" to listOf(2.0)
             ),
             schema = Schema(setOf(Column("x1"), Column("x2")))
         )
@@ -35,10 +35,10 @@ class CognitiveMapTest {
 
     @Test
     fun `test full connected graph with four concepts`() {
-        val vertexX1 = StatefulVertex("x1", { x -> x.toDouble() * 2 })
-        val vertexX2 = StatefulVertex("x2", { x -> x.toDouble() * 3 })
-        val vertexX3 = StatefulVertex("x3", { x -> x.toDouble() * 4 })
-        val vertexY = StatefulVertex("y", { x -> x.toDouble() })
+        val vertexX1 = StatefulVertex("x1", LinearFunctionActivation(2.0))
+        val vertexX2 = StatefulVertex("x2", LinearFunctionActivation(3.0))
+        val vertexX3 = StatefulVertex("x3", LinearFunctionActivation(4.0))
+        val vertexY = StatefulVertex("y", LinearFunctionActivation(1.0))
         val cognitiveMap = CognitiveMapBuilder()
             .withVertex(vertexX1)
             .withVertex(vertexX2)
@@ -48,9 +48,9 @@ class CognitiveMapTest {
             .build()
         val df = MapDataFrame(
             data = mapOf(
-                "x1" to listOf(1),
-                "x2" to listOf(2),
-                "x3" to listOf(3)
+                "x1" to listOf(1.0),
+                "x2" to listOf(2.0),
+                "x3" to listOf(3.0)
             ),
             schema = Schema(setOf(Column("x1"), Column("x2"), Column("x3")))
         )
@@ -61,5 +61,32 @@ class CognitiveMapTest {
         assertEquals(12.0, result.collectAs<Double>("x2").first())
         assertEquals(18.0, result.collectAs<Double>("x3").first())
         assertEquals(3.0, result.collectAs<Double>("y").first())
+    }
+
+    @Test
+    fun `test fit full connected graph with four concepts`() {
+        val vertexX1 = StatefulVertex("x1", LinearFunctionActivation(2.0))
+        val vertexX2 = StatefulVertex("x2", LinearFunctionActivation(3.0))
+        val vertexX3 = StatefulVertex("x3", LinearFunctionActivation(4.0))
+        val vertexY = StatefulVertex("y", LinearFunctionActivation(1.0))
+        val cognitiveMap = CognitiveMapBuilder()
+            .withVertex(vertexX1)
+            .withVertex(vertexX2)
+            .withVertex(vertexX3)
+            .withVertex(vertexY)
+            .fullConnected(true)
+            .build()
+        val df = MapDataFrame(
+            data = mapOf(
+                "x1" to listOf(1.0),
+                "x2" to listOf(2.0),
+                "x3" to listOf(3.0),
+                "y" to listOf(3.0)
+            ),
+            schema = Schema(setOf(Column("x1"), Column("x2"), Column("x3")))
+        )
+        cognitiveMap.train(df)
+
+        print(cognitiveMap)
     }
 }

@@ -5,23 +5,23 @@ import io.cm.pipeline.domain.Model
 class CognitiveMapBuilder {
 
     private val vertices: MutableSet<StatefulVertex> = mutableSetOf()
-    private val edges: MutableSet<Edge<Number>> = mutableSetOf()
+    private val edges: MutableSet<Edge<Double>> = mutableSetOf()
     private var isFullConnected = false
-    private var edgeFuncBuilder: (StatefulVertex, StatefulVertex) -> (Number) -> Number = { _, _ -> { _ -> 1 } }
+    private var edgeFuncBuilder: (StatefulVertex, StatefulVertex) -> (Double) -> Double = { _, _ -> { _ -> 1.0 } }
 
     fun withVertex(vertex: StatefulVertex): CognitiveMapBuilder {
         vertices.add(vertex)
         return this
     }
 
-    fun withEdge(edge: Edge<Number>): CognitiveMapBuilder {
+    fun withEdge(edge: Edge<Double>): CognitiveMapBuilder {
         if (!isFullConnected) {
             edges.add(edge)
         }
         return this
     }
 
-    fun withEdgeFunctionBuilder(func: (StatefulVertex, StatefulVertex) -> (Number) -> Number): CognitiveMapBuilder {
+    fun withEdgeFunctionBuilder(func: (StatefulVertex, StatefulVertex) -> (Double) -> Double): CognitiveMapBuilder {
         this.edgeFuncBuilder = func
         return this
     }
@@ -47,7 +47,7 @@ class CognitiveMapBuilder {
         return vertices
     }
 
-    private fun getEdges(): Set<Edge<Number>> =
+    private fun getEdges(): Set<Edge<Double>> =
         if (!isFullConnected) {
             edges
         } else {
@@ -56,7 +56,7 @@ class CognitiveMapBuilder {
                     vertices
                         .filter { it != from }
                         .map { to ->
-                            MultiplyEdge(from = from, to = to, 0.5f)
+                            MultiplyEdge(from = from, to = to, 0.5)
                         }
                 }.toSet()
         }
